@@ -1,12 +1,10 @@
-#[cfg(feature = "use-locks")]
-use lock::Lock;
 use std::{
     cell::{Cell, UnsafeCell},
     ops::{Deref, DerefMut},
 };
-
 #[cfg(feature = "use-locks")]
-use std::ptr;
+use {lock::Lock, std::ptr};
+
 #[cfg(feature = "use-locks")]
 mod lock;
 

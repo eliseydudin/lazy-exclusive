@@ -1,7 +1,6 @@
 #![allow(non_camel_case_types)]
 
 use std::{cell::UnsafeCell, ptr};
-
 #[cfg(target_os = "windows")]
 type SRWLOCK = usize;
 
