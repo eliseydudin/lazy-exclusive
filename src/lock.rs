@@ -6,11 +6,11 @@ use std::{cell::UnsafeCell, ptr};
 type SRWLOCK = usize;
 
 #[cfg(target_os = "windows")]
-unsafe extern "C" {
-    fn InitializeSRWLock(lock: *mut SRWLOCK);
-    fn AcquireSRWLockExclusive(lock: *mut SRWLOCK);
-    fn ReleaseSRWLockExclusive(lock: *mut SRWLOCK);
-}
+windows_link::link!("kernel32.dll" "system" fn InitializeSRWLock(lock: *mut SRWLOCK));
+#[cfg(target_os = "windows")]
+windows_link::link!("kernel32.dll" "system" fn AcquireSRWLockExclusive(lock: *mut SRWLOCK));
+#[cfg(target_os = "windows")]
+windows_link::link!("kernel32.dll" "system" fn ReleaseSRWLockExclusive(lock: *mut SRWLOCK));
 
 #[cfg(all(target_pointer_width = "64", not(target_os = "windows")))]
 type PTHREAD_MUTEX_T = [u8; 40];
