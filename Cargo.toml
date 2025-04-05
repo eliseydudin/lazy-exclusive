@@ -1,7 +1,14 @@
 [package]
 name = "lazy-exclusive"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
+authors = ["elisey dudin <dudin.elisey@icloud.com>"]
+description = "A global type like LazyLock/LazyStatic"
+readme = "README.md"
+repository = "https://github.com/eliseydudin/lazy-exclusive"
+license = "MIT OR Apache-2.0"
+keywords = ["lazy", "static"]
+categories = ["memory-management"]
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-link = { version = "0.1.1", optional = true }
