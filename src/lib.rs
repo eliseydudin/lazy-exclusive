@@ -1,9 +1,9 @@
+#[cfg(feature = "use-locks")]
+use lock::Lock;
 use std::{
     cell::{Cell, UnsafeCell},
     ops::{Deref, DerefMut},
 };
-#[cfg(feature = "use-locks")]
-use {lock::Lock, std::ptr};
 
 #[cfg(feature = "use-locks")]
 mod lock;
@@ -12,7 +12,6 @@ mod lock;
 pub enum State {
     Unlocked,
     Locked,
-    #[cfg(feature = "use-locks")]
     Poisoned,
 }
 
@@ -20,7 +19,7 @@ pub struct LazyExclusive<T> {
     state: Cell<State>,
     data: UnsafeCell<T>,
     #[cfg(feature = "use-locks")]
-    lock: UnsafeCell<Option<Lock>>,
+    lock: Lock,
 }
 
 unsafe impl<T> Send for LazyExclusive<T> {}
@@ -47,10 +46,7 @@ impl<T> Drop for Mut<'_, T> {
         self.source.state.set(State::Unlocked);
         #[cfg(feature = "use-locks")]
         {
-            self.source
-                .get_lock()
-                .as_ref()
-                .inspect(|lock| lock.unlock());
+            self.source.lock.unlock();
 
             if std::thread::panicking() {
                 self.source.state.set(State::Poisoned)
@@ -90,32 +86,20 @@ impl<T> LazyExclusive<T> {
         Self {
             state,
             data,
-            lock: UnsafeCell::new(None),
+            lock: Lock::new(),
         }
     }
 
     pub fn get(&self) -> Option<Mut<'_, T>> {
-        #[cfg(feature = "use-locks")]
-        let lock = self.get_lock();
-        #[cfg(feature = "use-locks")]
-        if lock.is_none() {
-            *lock = Some(Lock::new())
-        }
-
         match self.state.get() {
             State::Unlocked => {
                 self.state.set(State::Locked);
                 #[cfg(feature = "use-locks")]
-                lock.as_ref().inspect(|l| l.lock());
+                self.lock.lock();
                 Some(Mut { source: self })
             }
             _ => None,
         }
-    }
-
-    #[cfg(feature = "use-locks")]
-    fn get_lock(&self) -> &mut Option<Lock> {
-        unsafe { self.lock.get().as_mut() }.unwrap()
     }
 
     pub fn swap(&self, new_value: T) {
@@ -125,13 +109,7 @@ impl<T> LazyExclusive<T> {
             self.state.set(State::Locked);
 
             #[cfg(feature = "use-locks")]
-            {
-                let lock = self.lock.get().as_mut().unwrap();
-                if lock.is_some() {
-                    ptr::drop_in_place(self.lock.get());
-                }
-                *lock = None;
-            }
+            self.lock.reset();
         }
     }
 
@@ -141,12 +119,7 @@ impl<T> LazyExclusive<T> {
 
     #[cfg(feature = "use-locks")]
     pub fn wait(&self) -> Mut<'_, T> {
-        let lock = self.get_lock();
-        if lock.is_none() {
-            *lock = Some(Lock::new())
-        }
-
-        lock.as_ref().expect("Lock should exist").lock();
+        self.lock.lock();
         assert_eq!(self.state.get(), State::Unlocked, "The data was poisoned");
         self.state.set(State::Locked);
         Mut { source: self }
