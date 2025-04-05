@@ -9,9 +9,8 @@ println!("{}", *mutref); // will print 20
 let opt = lazy.get(); // is none because lock still exists
 ```
 add this crate to your code like this:
-```toml
-[dependencies]
-lazy-exclusive = { git = "https://github.com/eliseydudin/lazy-exclusive.git" }
+```sh
+cargo add lazy-exclusive
 ```
 
 # use-locks
