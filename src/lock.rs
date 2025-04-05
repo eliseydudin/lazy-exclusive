@@ -171,3 +171,9 @@ impl Drop for Lock {
         }
     }
 }
+
+impl Default for Lock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
