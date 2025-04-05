@@ -1,5 +1,5 @@
 # lazy-exclusive
-a global container type (like `LazyLock`) with runtime-checked mutability
+a global container type (like `LazyLock`) with runtime-checked mutability. can be used for `static` variables
 ```rust
 let lazy = LazyExclusive::new(20);
 let mut lock = lazy.get().unwrap(); // Mut<'_, i32>
@@ -15,7 +15,7 @@ lazy-exclusive = { git = "https://github.com/eliseydudin/lazy-exclusive.git" }
 ```
 
 # use-locks
-you can wait for `LazyExclusive` to unlock by enabling the `use-locks` feature and using the `wait` method.
+enable the `use-locks` feature for the crate to use system-implemented locks.
 
 ```rust
 static SHARED: LazyExclusive<i32> = LazyExclusive::new(120);

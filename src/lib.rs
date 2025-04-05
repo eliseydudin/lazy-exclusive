@@ -106,7 +106,7 @@ impl<T> LazyExclusive<T> {
         unsafe {
             let t = self.data.get().as_mut().unwrap();
             *t = new_value;
-            self.state.set(State::Locked);
+            self.state.set(State::Unlocked);
 
             #[cfg(feature = "use-locks")]
             self.lock.reset();
@@ -128,7 +128,7 @@ impl<T> LazyExclusive<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::LazyExclusive;
+    use crate::{LazyExclusive, State};
 
     #[test]
     fn basic() {
@@ -166,5 +166,13 @@ mod tests {
         assert_eq!(SHARED.get_state(), State::Locked);
         let new_lock = SHARED.wait();
         assert_eq!(*new_lock, 120 * 2);
+    }
+
+    #[test]
+    fn reset() {
+        let lazy = LazyExclusive::new(120);
+        lazy.swap(10);
+        assert_eq!(*lazy.get().unwrap(), 10);
+        assert_eq!(lazy.get_state(), State::Unlocked);
     }
 }
