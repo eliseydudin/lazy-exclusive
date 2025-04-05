@@ -19,10 +19,12 @@ pub enum State {
 /// A container type like [`LazyLock`].
 /// Allows mutable access, but only one reference at a time.
 /// ```rust
+/// use lazy_exclusive::LazyExclusive;
+///
 /// static LAZY: LazyExclusive<i32> = LazyExclusive::new(123);
 /// let lock = LAZY.get().unwrap();
 /// assert_eq!(*lock, 123);
-/// assert_eq!(LAZY.is_locked());
+/// assert!(LAZY.is_locked());
 /// ```
 ///
 /// [`LazyLock`]: std::sync::LazyLock
@@ -41,8 +43,7 @@ pub struct Mut<'a, T> {
 }
 
 impl<T> Mut<'_, T> {
-    /// Convert self into a mutable reference to [`T`]
-    pub fn inner(&self) -> &mut T {
+    fn inner(&self) -> &mut T {
         unsafe {
             self.source
                 .data
