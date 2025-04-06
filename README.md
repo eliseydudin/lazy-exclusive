@@ -29,3 +29,16 @@ assert_eq!(SHARED.get_state(), State::Locked);
 let new_lock = SHARED.wait();
 assert_eq!(*new_lock, 120 * 2);
 ```
+
+# no_std support
+this crate supports no_std, which can be used by disabling default-features
+```TOML
+[dependencies]
+lazy-exclusive = { version = "1.0", default-features = false }
+```
+you also can enable use-locks
+```TOML
+[dependencies]
+lazy-exclusive = { version = "1.0", default-features = false, features = ["use-locks"] }
+```
+note that this is not safe option due to some missing implementations
