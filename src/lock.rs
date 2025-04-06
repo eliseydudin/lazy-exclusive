@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use std::{cell::UnsafeCell, ptr};
+use std::{cell::UnsafeCell, mem::MaybeUninit, ptr};
 #[cfg(target_os = "windows")]
 type SRWLOCK = usize;
 
@@ -11,36 +11,23 @@ windows_link::link!("kernel32.dll" "system" fn AcquireSRWLockExclusive(lock: *mu
 #[cfg(target_os = "windows")]
 windows_link::link!("kernel32.dll" "system" fn ReleaseSRWLockExclusive(lock: *mut SRWLOCK));
 
-#[cfg(all(target_pointer_width = "64", not(target_os = "windows")))]
-type PTHREAD_MUTEX_T = [u8; 40];
-#[cfg(all(target_pointer_width = "64", not(target_os = "windows")))]
-const LEN: usize = 40;
-
-#[cfg(all(target_pointer_width = "32", not(target_os = "windows")))]
-type PTHREAD_MUTEX_T = [u8; 24];
-#[cfg(all(target_pointer_width = "32", not(target_os = "windows")))]
-const LEN: usize = 24;
-
 #[cfg(not(target_os = "windows"))]
-#[link(name = "pthread")]
-unsafe extern "C" {
-    fn pthread_mutex_init(lock: *mut PTHREAD_MUTEX_T, attr: *const u8) -> i32;
-    fn pthread_mutex_lock(lock: *mut PTHREAD_MUTEX_T) -> i32;
-    fn pthread_mutex_unlock(lock: *mut PTHREAD_MUTEX_T) -> i32;
-    fn pthread_mutex_destroy(lock: *mut PTHREAD_MUTEX_T) -> i32;
-}
+use libc::{
+    pthread_mutex_destroy, pthread_mutex_init, pthread_mutex_lock, pthread_mutex_t,
+    pthread_mutex_unlock,
+};
 
 enum LockState {
     Uninitialized,
     #[cfg(not(target_os = "windows"))]
-    Initialized(PTHREAD_MUTEX_T),
+    Initialized(pthread_mutex_t),
     #[cfg(target_os = "windows")]
     Initialized(SRWLOCK),
 }
 
 impl LockState {
     #[cfg(not(target_os = "windows"))]
-    pub fn unwrap_initialized(&mut self) -> &mut PTHREAD_MUTEX_T {
+    pub fn unwrap_initialized(&mut self) -> &mut pthread_mutex_t {
         match self {
             Self::Uninitialized => panic!("The lock's state is uninitialized"),
             Self::Initialized(lock) => lock,
@@ -85,7 +72,7 @@ impl Lock {
     fn init(&self) {
         #[cfg(not(target_os = "windows"))]
         let data = unsafe {
-            let data = UnsafeCell::new([0_u8; LEN]);
+            let data = UnsafeCell::new(MaybeUninit::zeroed().assume_init());
             let result = pthread_mutex_init(data.get(), ptr::null());
             assert_eq!(
                 result, 0,
@@ -116,7 +103,7 @@ impl Lock {
 
         #[cfg(not(target_os = "windows"))]
         unsafe {
-            pthread_mutex_lock(lock as *mut PTHREAD_MUTEX_T)
+            pthread_mutex_lock(lock as *mut pthread_mutex_t)
         };
         #[cfg(target_os = "windows")]
         unsafe {
@@ -136,7 +123,7 @@ impl Lock {
 
         #[cfg(not(target_os = "windows"))]
         unsafe {
-            pthread_mutex_unlock(lock as *mut PTHREAD_MUTEX_T)
+            pthread_mutex_unlock(lock as *mut pthread_mutex_t)
         };
         #[cfg(target_os = "windows")]
         unsafe {
@@ -150,7 +137,7 @@ impl Lock {
             LockState::Uninitialized => (),
             #[cfg(not(target_os = "windows"))]
             LockState::Initialized(lock) => unsafe {
-                std::ptr::drop_in_place(lock as *mut PTHREAD_MUTEX_T);
+                std::ptr::drop_in_place(lock as *mut pthread_mutex_t);
                 *mutptr = LockState::Uninitialized;
             },
             #[cfg(target_os = "windows")]
@@ -165,7 +152,7 @@ impl Drop for Lock {
         let mutref = unsafe { self.0.get().as_mut() }.expect("Should never fail");
         match mutref {
             LockState::Initialized(lock) => unsafe {
-                pthread_mutex_destroy(lock as *mut PTHREAD_MUTEX_T);
+                pthread_mutex_destroy(lock as *mut pthread_mutex_t);
             },
             _ => (),
         }
