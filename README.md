@@ -32,13 +32,13 @@ assert_eq!(*new_lock, 120 * 2);
 
 # no_std support
 this crate supports no_std, which can be used by disabling default-features
-```TOML
+```toml
 [dependencies]
 lazy-exclusive = { version = "1.0", default-features = false }
 ```
-you also can enable use-locks
-```TOML
+you can enable `use-locks` with `no_std` like this
+```toml
 [dependencies]
 lazy-exclusive = { version = "1.0", default-features = false, features = ["use-locks"] }
 ```
-note that this is not safe option due to some missing implementations
+note that this is not guaranteed to work properly
