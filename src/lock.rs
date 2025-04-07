@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use std::{cell::UnsafeCell, mem::MaybeUninit, ptr};
+use core::{cell::UnsafeCell, ptr};
 #[cfg(target_os = "windows")]
 type SRWLOCK = usize;
 
@@ -72,7 +72,7 @@ impl Lock {
     fn init(&self) {
         #[cfg(not(target_os = "windows"))]
         let data = unsafe {
-            let data = UnsafeCell::new(MaybeUninit::zeroed().assume_init());
+            let data = UnsafeCell::new(core::mem::zeroed());
             let result = pthread_mutex_init(data.get(), ptr::null());
             assert_eq!(
                 result, 0,
@@ -137,7 +137,7 @@ impl Lock {
             LockState::Uninitialized => (),
             #[cfg(not(target_os = "windows"))]
             LockState::Initialized(lock) => unsafe {
-                std::ptr::drop_in_place(lock as *mut pthread_mutex_t);
+                core::ptr::drop_in_place(lock as *mut pthread_mutex_t);
                 *mutptr = LockState::Uninitialized;
             },
             #[cfg(target_os = "windows")]

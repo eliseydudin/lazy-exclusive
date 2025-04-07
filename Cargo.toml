@@ -14,8 +14,9 @@ categories = ["memory-management"]
 windows-link = { version = "0.1.1", optional = true }
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
-libc = { version = "0.2.171", optional = true }
+libc = { version = "0.2.171", default-features = false, optional = true }
 
 [features]
+default = ["use-locks", "std"]
+std = []
 use-locks = ["windows-link", "libc"]
-default = ["use-locks"]

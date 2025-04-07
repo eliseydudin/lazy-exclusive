@@ -1,10 +1,12 @@
-#[cfg(feature = "use-locks")]
-use lock::Lock;
-use std::{
+#![no_std]
+
+use core::{
     cell::{Cell, UnsafeCell},
     fmt::Debug,
     ops::{Deref, DerefMut},
 };
+#[cfg(feature = "use-locks")]
+use lock::Lock;
 
 #[cfg(feature = "use-locks")]
 mod lock;
@@ -61,8 +63,12 @@ impl<T> Drop for Mut<'_, T> {
         {
             self.source.lock.unlock();
 
-            if std::thread::panicking() {
-                self.source.state.set(State::Poisoned)
+            #[cfg(feature = "std")]
+            {
+                extern crate std;
+                if std::thread::panicking() {
+                    self.source.state.set(State::Poisoned)
+                }
             }
         }
     }
@@ -176,7 +182,7 @@ impl<T> LazyExclusive<T> {
 }
 
 impl<T: Debug> Debug for LazyExclusive<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let data: &dyn Debug = match self.state.get() {
             State::Unlocked => unsafe { self.data.get().as_mut().expect("Should never fail") },
             State::Locked => &"<locked>",
@@ -237,9 +243,10 @@ mod tests {
         assert_eq!(*pointer, 1231);
     }
 
-    #[cfg(feature = "use-locks")]
+    #[cfg(all(feature = "use-locks", feature = "std"))]
     #[test]
     fn lock_test() {
+        extern crate std;
         use crate::State;
         use std::time::Duration;
 
