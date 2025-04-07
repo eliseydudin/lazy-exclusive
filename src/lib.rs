@@ -1,8 +1,7 @@
 #![no_std]
-#![feature(const_cell)]
 
 use core::{
-    cell::{Cell, UnsafeCell},
+    cell::UnsafeCell,
     fmt::{self, Debug},
     ops::{Deref, DerefMut},
 };
@@ -20,6 +19,28 @@ pub enum State {
     Poisoned,
 }
 
+/// A Cell for [`State`]. Used for const access to its data
+pub struct StateCell {
+    inner: UnsafeCell<State>,
+}
+
+impl StateCell {
+    pub const fn new(data: State) -> Self {
+        Self {
+            inner: UnsafeCell::new(data),
+        }
+    }
+
+    pub const fn get(&self) -> State {
+        // SAFETY: self.inner.get() is never an invalid pointer
+        unsafe { *self.inner.get() }
+    }
+
+    pub fn set(&self, data: State) {
+        let _ = unsafe { core::mem::replace(&mut *self.inner.get(), data) };
+    }
+}
+
 /// A container type like [`LazyLock`].
 /// Allows mutable access, but only one reference at a time.
 /// ```rust
@@ -33,7 +54,7 @@ pub enum State {
 ///
 /// [`LazyLock`]: std::sync::LazyLock
 pub struct LazyExclusive<T> {
-    state: Cell<State>,
+    state: StateCell,
     data: UnsafeCell<T>,
     #[cfg(feature = "use-locks")]
     lock: Lock,
@@ -111,7 +132,7 @@ impl<T> DerefMut for Mut<'_, T> {
 impl<T> LazyExclusive<T> {
     pub const fn new(data: T) -> Self {
         let data = UnsafeCell::new(data);
-        let state = Cell::new(State::Unlocked);
+        let state = StateCell::new(State::Unlocked);
 
         #[cfg(not(feature = "use-locks"))]
         return Self { state, data };
