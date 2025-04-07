@@ -250,8 +250,10 @@ mod tests {
     fn lock_test() {
         extern crate std;
         use crate::State;
-        use std::time::Duration;
+        use std::time::{Duration, Instant};
 
+        let start = Instant::now();
+        let five_seconds = Duration::from_secs(5);
         static SHARED: LazyExclusive<i32> = LazyExclusive::new(120);
         let mut lock = SHARED.get().unwrap();
 
@@ -263,6 +265,7 @@ mod tests {
         assert_eq!(SHARED.get_state(), State::Locked);
         let new_lock = SHARED.wait();
         assert_eq!(*new_lock, 120 * 2);
+        assert!(start.elapsed() >= five_seconds);
     }
 
     #[test]

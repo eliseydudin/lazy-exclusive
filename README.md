@@ -17,6 +17,8 @@ cargo add lazy-exclusive
 enable the `use-locks` feature for the crate to use system-implemented locks.
 
 ```rust
+let start = Instant::now();
+let five_seconds = Duration::from_secs(5);
 static SHARED: LazyExclusive<i32> = LazyExclusive::new(120);
 let mut lock = SHARED.get().unwrap();
 
@@ -28,6 +30,7 @@ std::thread::spawn(move || {
 assert_eq!(SHARED.get_state(), State::Locked);
 let new_lock = SHARED.wait();
 assert_eq!(*new_lock, 120 * 2);
+assert!(start.elapsed() >= five_seconds);
 ```
 
 # no_std support
