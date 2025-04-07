@@ -2,7 +2,7 @@
 
 use core::{
     cell::{Cell, UnsafeCell},
-    fmt::Debug,
+    fmt::{self, Debug},
     ops::{Deref, DerefMut},
 };
 #[cfg(feature = "use-locks")]
@@ -11,7 +11,8 @@ use lock::Lock;
 #[cfg(feature = "use-locks")]
 mod lock;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum State {
     Unlocked,
     Locked,
@@ -45,7 +46,7 @@ pub struct Mut<'a, T> {
 }
 
 impl<T> Mut<'_, T> {
-    fn inner(&self) -> &mut T {
+    const fn inner(&mut self) -> &mut T {
         unsafe {
             self.source
                 .data
@@ -67,7 +68,7 @@ impl<T> Drop for Mut<'_, T> {
             {
                 extern crate std;
                 if std::thread::panicking() {
-                    self.source.state.set(State::Poisoned)
+                    self.source.state.set(State::Poisoned);
                 }
             }
         }
@@ -90,13 +91,13 @@ impl<T> Deref for Mut<'_, T> {
 
 impl<T> AsRef<T> for Mut<'_, T> {
     fn as_ref(&self) -> &T {
-        self.deref()
+        self
     }
 }
 
 impl<T> AsMut<T> for Mut<'_, T> {
     fn as_mut(&mut self) -> &mut T {
-        self.deref_mut()
+        self
     }
 }
 
@@ -147,7 +148,7 @@ impl<T> LazyExclusive<T> {
         }
     }
 
-    pub fn get_state(&self) -> State {
+    pub const fn get_state(&self) -> State {
         self.state.get()
     }
 
@@ -168,21 +169,21 @@ impl<T> LazyExclusive<T> {
         }
     }
 
-    pub fn is_unlocked(&self) -> bool {
+    pub const fn is_unlocked(&self) -> bool {
         matches!(self.state.get(), State::Unlocked)
     }
 
-    pub fn is_locked(&self) -> bool {
+    pub const fn is_locked(&self) -> bool {
         matches!(self.state.get(), State::Locked)
     }
 
-    pub fn is_poisoned(&self) -> bool {
+    pub const fn is_poisoned(&self) -> bool {
         matches!(self.state.get(), State::Poisoned)
     }
 }
 
 impl<T: Debug> Debug for LazyExclusive<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let data: &dyn Debug = match self.state.get() {
             State::Unlocked => unsafe { self.data.get().as_mut().expect("Should never fail") },
             State::Locked => &"<locked>",
@@ -210,7 +211,7 @@ impl<T: Clone> Clone for LazyExclusive<T> {
             State::Poisoned => panic!("poisoned"),
         };
 
-        LazyExclusive::new(data.clone())
+        Self::new(data.clone())
     }
 }
 
