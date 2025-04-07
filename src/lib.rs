@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(const_cell)]
 
 use core::{
     cell::{Cell, UnsafeCell},
