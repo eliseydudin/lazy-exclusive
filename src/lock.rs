@@ -103,11 +103,11 @@ impl Lock {
 
         #[cfg(not(target_os = "windows"))]
         unsafe {
-            pthread_mutex_lock(lock as *mut pthread_mutex_t)
+            pthread_mutex_lock(ptr::from_mut::<pthread_mutex_t>(lock));
         };
         #[cfg(target_os = "windows")]
         unsafe {
-            AcquireSRWLockExclusive(lock as *mut SRWLOCK)
+            AcquireSRWLockExclusive(lock as *mut SRWLOCK);
         }
     }
 
@@ -123,11 +123,11 @@ impl Lock {
 
         #[cfg(not(target_os = "windows"))]
         unsafe {
-            pthread_mutex_unlock(lock as *mut pthread_mutex_t)
+            pthread_mutex_unlock(ptr::from_mut::<pthread_mutex_t>(lock));
         };
         #[cfg(target_os = "windows")]
         unsafe {
-            ReleaseSRWLockExclusive(lock as *mut SRWLOCK)
+            ReleaseSRWLockExclusive(lock as *mut SRWLOCK);
         }
     }
 
@@ -137,7 +137,7 @@ impl Lock {
             LockState::Uninitialized => (),
             #[cfg(not(target_os = "windows"))]
             LockState::Initialized(lock) => unsafe {
-                core::ptr::drop_in_place(lock as *mut pthread_mutex_t);
+                ptr::drop_in_place(ptr::from_mut::<pthread_mutex_t>(lock));
                 *mutptr = LockState::Uninitialized;
             },
             #[cfg(target_os = "windows")]
@@ -150,11 +150,10 @@ impl Lock {
 impl Drop for Lock {
     fn drop(&mut self) {
         let mutref = unsafe { self.0.get().as_mut() }.expect("Should never fail");
-        match mutref {
-            LockState::Initialized(lock) => unsafe {
-                pthread_mutex_destroy(lock as *mut pthread_mutex_t);
-            },
-            _ => (),
+        if let LockState::Initialized(lock) = mutref {
+            unsafe {
+                pthread_mutex_destroy(ptr::from_mut::<pthread_mutex_t>(lock));
+            }
         }
     }
 }
