@@ -1,8 +1,8 @@
 [package]
 name = "lazy-exclusive"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2024"
-authors = ["elisey dudin <dudin.elisey@icloud.com>"]
+authors = ["elisey dudin <dudin.elisey@icloud.com>", "Maksim Bondarenkov"]
 description = "A global type like LazyLock/LazyStatic"
 readme = "README.md"
 repository = "https://github.com/eliseydudin/lazy-exclusive"
